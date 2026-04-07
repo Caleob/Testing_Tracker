@@ -26,7 +26,12 @@ const db = new sqlite3.Database('./database.sqlite', (err) => {
             username TEXT,
             password TEXT,
             grade TEXT,
-            required_tests TEXT,
+            ela_1 BOOLEAN,
+            ela_2 BOOLEAN,
+            math_1 BOOLEAN,
+            math_2 BOOLEAN,
+            sci_1 BOOLEAN,
+            sci_2 BOOLEAN,
             parent_phone TEXT,
             is_two_day BOOLEAN,
             is_self_driver BOOLEAN,
@@ -37,6 +42,7 @@ const db = new sqlite3.Database('./database.sqlite', (err) => {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             student_id TEXT,
             test_name TEXT,
+            teacher_name TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (student_id) REFERENCES students(id)
         )`);
@@ -55,9 +61,11 @@ async function syncWithCloud() {
             for (const scan of scans) {
                 if (scan.action === 'CHECK-IN') {
                     db.run(`UPDATE students SET checked_in = 1 WHERE id = ?`, [scan.student_id]);
-                    db.run(`INSERT INTO scans (student_id, test_name, timestamp) VALUES (?, ?, ?)`, [scan.student_id, 'CHECK-IN', scan.timestamp]);
+                    db.run(`INSERT INTO scans (student_id, test_name, teacher_name, timestamp) VALUES (?, ?, ?, ?)`, 
+                        [scan.student_id, 'CHECK-IN', scan.teacher_name || 'Front Desk', scan.timestamp]);
                 } else {
-                    db.run(`INSERT INTO scans (student_id, test_name, timestamp) VALUES (?, ?, ?)`, [scan.student_id, scan.test_name || scan.action, scan.timestamp]);
+                    db.run(`INSERT INTO scans (student_id, test_name, teacher_name, timestamp) VALUES (?, ?, ?, ?)`, 
+                        [scan.student_id, scan.test_name || scan.action, scan.teacher_name || 'Unknown', scan.timestamp]);
                 }
             }
             
@@ -79,9 +87,19 @@ app.post('/api/import', (req, res) => {
     db.serialize(() => {
         db.run(`DELETE FROM students`);
         db.run(`DELETE FROM scans`);
-        const stmt = db.prepare(`INSERT INTO students (id, name, username, password, grade, required_tests, parent_phone, is_two_day, is_self_driver, checked_in) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`);
+        const stmt = db.prepare(`INSERT INTO students (
+            id, name, username, password, grade, 
+            ela_1, ela_2, math_1, math_2, sci_1, sci_2, 
+            parent_phone, is_two_day, is_self_driver, checked_in) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`);
+        
         students.forEach(s => {
-            stmt.run(s.id, s.name, s.username, s.password, s.grade, s.required_tests, s.parent_phone, s.is_two_day ? 1 : 0, s.is_self_driver ? 1 : 0);
+            stmt.run(
+                s.id, s.name, s.username, s.password, s.grade,
+                s.ela_1 ? 1 : 0, s.ela_2 ? 1 : 0, s.math_1 ? 1 : 0, 
+                s.math_2 ? 1 : 0, s.sci_1 ? 1 : 0, s.sci_2 ? 1 : 0,
+                s.parent_phone, s.is_two_day ? 1 : 0, s.is_self_driver ? 1 : 0
+            );
         });
         stmt.finalize();
     });
@@ -101,17 +119,6 @@ app.get('/api/dashboard', (req, res) => {
                  scans: scansByStudent[st.id] || []
              }));
              res.json(fullData);
-        });
-    });
-});
-
-// GET Student Info (from Dashboard local)
-app.get('/api/student/:id', (req, res) => {
-    const id = req.params.id;
-    db.get(`SELECT * FROM students WHERE id = ?`, [id], (err, row) => {
-        if (!row) return res.status(404).json({ error: "Not found" });
-        db.all(`SELECT * FROM scans WHERE student_id = ?`, [id], (err, scans) => {
-             res.json({ student: row, scans });
         });
     });
 });

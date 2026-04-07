@@ -29,9 +29,29 @@
             overflow: hidden;
         }
 
+        #setup-container {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        #setup-container input {
+            padding: 1rem;
+            font-size: 1.2rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--text-muted);
+            margin-bottom: 1rem;
+            width: 100%;
+            max-width: 300px;
+        }
+
         #reader-container {
             flex: 1;
-            display: flex;
+            display: none; /* hidden until setup completes */
             flex-direction: column;
         }
         
@@ -103,9 +123,17 @@
 </head>
 <body>
 
+    <div id="setup-container">
+        <h2>Welcome to Testing Tracker</h2>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Please enter your name to log tests securely.</p>
+        <input type="text" id="teacher-name-input" placeholder="e.g. Mr. Smith">
+        <button class="btn" style="max-width: 300px;" onclick="saveTeacherName()">Start Scanning</button>
+    </div>
+
     <div id="reader-container">
-        <div style="padding: 1rem; text-align: center; background: #000; border-bottom: 1px solid #333;">
-            <p style="margin: 0; font-weight: 600;">Scan Student Card</p>
+        <div style="padding: 1rem; display: flex; justify-content: space-between; align-items: center; background: #000; border-bottom: 1px solid #333;">
+            <p style="margin: 0; font-weight: 600;" id="scan-header-title">Scanner</p>
+            <button onclick="changeTeacher()" style="background: transparent; border: 1px solid #666; color: white; border-radius: 0.25rem; padding: 0.25rem 0.5rem;">Change</button>
         </div>
         <div id="reader"></div>
     </div>
@@ -146,35 +174,68 @@
         const CLOUD_URL = "https://script.google.com/macros/s/AKfycbxTvfYtcdY732FaG3VN3UKf7i7jtwj3DUIhmyvhkA6gsofX8VIv9V1tQGDCI9MscTcYEw/exec";
         let html5QrcodeScanner;
         let currentStudent = null;
+        let teacherName = "";
 
         window.addEventListener('load', () => {
-            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
-            html5QrcodeScanner.render(onScanSuccess);
+            teacherName = window.localStorage.getItem('teacherName');
+            if (teacherName) {
+                document.getElementById('setup-container').style.display = 'none';
+                document.getElementById('reader-container').style.display = 'flex';
+                document.getElementById('scan-header-title').innerText = `Scanner (${teacherName})`;
+                initScanner();
+            }
         });
+
+        function saveTeacherName() {
+            const input = document.getElementById('teacher-name-input').value.trim();
+            if (!input) {
+                alert("Please enter a name.");
+                return;
+            }
+            teacherName = input;
+            window.localStorage.setItem('teacherName', teacherName);
+            document.getElementById('setup-container').style.display = 'none';
+            document.getElementById('reader-container').style.display = 'flex';
+            document.getElementById('scan-header-title').innerText = `Scanner (${teacherName})`;
+            initScanner();
+        }
+
+        function changeTeacher() {
+            window.localStorage.removeItem('teacherName');
+            location.reload();
+        }
+
+        function initScanner() {
+            if (!html5QrcodeScanner) {
+                html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
+                html5QrcodeScanner.render(onScanSuccess);
+            }
+        }
 
         function onScanSuccess(decodedText) {
             html5QrcodeScanner.pause(true);
             
-            // Format: ID | Name | Grade | Tests | Phone | Is2Day | IsSelfDriver
+            // Format: ID | Name | Grade | Phone | E1,E2,M1,M2,S1,S2 | Is2Day | IsSelf
             const parts = decodedText.split('|').map(s => s.trim());
-            if (parts.length < 2) {
-                // Fallback for ID-only scans
-                currentStudent = { id: parts[0], name: "Student " + parts[0], grade: "", tests: "", phone: "", is2Day: false, isSelf: false, checked_in: true };
+            if (parts.length < 5) {
+                currentStudent = { id: parts[0], name: "Student " + parts[0], grade: "", phone: "", requiredTests: [], is2Day: false, isSelf: false };
             } else {
+                const booleans = parts[4].split(',').map(n => n === '1');
+                const testNames = ["ELA-1", "ELA-2", "MATH-1", "MATH-2", "SCI-1", "SCI-2"];
+                const reqs = [];
+                booleans.forEach((b, idx) => { if(b) reqs.push(testNames[idx]); });
+
                 currentStudent = {
                     id: parts[0],
                     name: parts[1],
                     grade: parts[2] || "",
-                    tests: parts[3] || "",
-                    phone: parts[4] || "",
+                    phone: parts[3] || "",
+                    requiredTests: reqs,
                     is2Day: parts[5] === 'true',
-                    isSelf: parts[6] === 'true',
-                    checked_in: false // will be overwritten locally if we had a sync, but we use the pipe-info
+                    isSelf: parts[6] === 'true'
                 };
             }
 
-            // Check if we've seen this student before in THIS session (optional)
-            // For MVP, we'll assume the QR data is the source of truth for the phone
             showActionUI();
         }
 
@@ -185,16 +246,14 @@
             document.getElementById('s-name').innerText = currentStudent.name + (currentStudent.grade ? ` (Grade ${currentStudent.grade})` : '');
             document.getElementById('s-id').innerText = `ID: ${currentStudent.id}`;
 
-            const requiredTests = currentStudent.tests ? currentStudent.tests.split(',').filter(x=>x) : [];
+            const hasBeenCheckedInLocally = window.localStorage.getItem('checked_in_' + currentStudent.id);
             
-            // Logic: If they have ID|Name etc, we show Check-In. 
-            // If it's just ID, we skip to test view.
-            if (currentStudent.tests && !window.localStorage.getItem('checked_in_' + currentStudent.id)) {
+            if (currentStudent.requiredTests.length > 0 && !hasBeenCheckedInLocally) {
                 document.getElementById('checkin-view').style.display = 'block';
                 document.getElementById('test-view').style.display = 'none';
                 document.getElementById('s-info-card').innerHTML = `
                     <strong>Contact:</strong> ${currentStudent.phone || 'N/A'}<br>
-                    <strong>Tests:</strong> ${requiredTests.join(', ')}<br>
+                    <strong>Tests:</strong> ${currentStudent.requiredTests.join(', ')}<br>
                     <strong>Plan:</strong> ${currentStudent.is2Day ? '2-Day' : '1-Day'} | ${currentStudent.isSelf ? 'Self Driver' : 'Pickup Needed'}
                 `;
             } else {
@@ -202,7 +261,7 @@
                 document.getElementById('test-view').style.display = 'block';
                 const container = document.getElementById('test-buttons');
                 container.innerHTML = '';
-                requiredTests.forEach(test => {
+                currentStudent.requiredTests.forEach(test => {
                     const btn = document.createElement('button');
                     btn.className = 'btn';
                     btn.innerText = `Complete: ${test}`;
@@ -220,18 +279,20 @@
 
         async function submitAction(actionType, testName = '') {
             try {
-                // Send to Cloud Relay
+                // Send to Cloud Relay using text/plain to avoid CORS strict opaque failures
                 await fetch(CLOUD_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // Critical for Google Apps Script POSTs
-                    headers: {'Content-Type': 'application/json'},
+                    mode: 'no-cors',
+                    headers: {'Content-Type': 'text/plain;charset=utf-8'},
                     body: JSON.stringify({
                         student_id: currentStudent.id,
                         action: actionType,
-                        test_name: testName
+                        test_name: testName,
+                        teacher_name: teacherName // Added teacher name parameter
                     })
                 });
 
+                // Since we use no-cors, fetch simply resolves immediately upon send.
                 if (actionType === 'CHECK-IN' || actionType === 'CHECK-OUT') {
                     playFunSong();
                     if (actionType === 'CHECK-IN') window.localStorage.setItem('checked_in_' + currentStudent.id, 'true');
@@ -247,7 +308,8 @@
                     html5QrcodeScanner.resume();
                 }, 1500);
             } catch (err) {
-                alert("Submission failed. Check internet.");
+                alert("Submission failed. Check your internet connection.");
+                console.error(err);
             }
         }
     </script>

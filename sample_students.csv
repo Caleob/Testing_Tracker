@@ -1,0 +1,7 @@
+id,name,username,password,grade,ela_1,ela_2,math_1,math_2,sci_1,sci_2,parent_phone,is_two_day,is_self_driver
+STU001,Laura Hochman,lhoch21,k9bz4p,11,Yes,Yes,Yes,Yes,No,No,555-0101,false,true
+STU002,Lucas Siebenmorgen,lsieb88,m2xq9r,12,Yes,Yes,Yes,Yes,Yes,Yes,555-0102,true,true
+STU003,Andrea Holland,aholl45,p8nt2c,10,No,No,No,No,Yes,Yes,555-0103,false,false
+STU004,Rebecca Taylor,rtayl12,v5kr7m,11,Yes,Yes,Yes,Yes,No,No,555-0104,true,false
+STU005,Kyle Wright,kwrig56,h3dj8w,10,Yes,Yes,Yes,Yes,Yes,Yes,555-0105,true,false
+STU006,Candice Martin,cmart99,b4fc6y,9,No,No,No,No,Yes,Yes,555-0106,false,false

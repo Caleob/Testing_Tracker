@@ -4,27 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Testing Tracker Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script src="/utils.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #0f172a;
             --surface-color: #1e293b;
             --primary: #3b82f6;
-            --success: #10b981;
             --warning: #f59e0b;
-            --alert: #ef4444;
+            --danger: #ef4444;
+            --success: #10b981;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
-            --border: #334155;
         }
 
         body {
-            margin: 0;
-            padding: 2rem;
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
+            margin: 0;
+            padding: 2rem;
         }
 
         .header {
@@ -32,117 +30,144 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #334155;
         }
 
-        .title h1 {
-            margin: 0;
-            font-size: 1.8rem;
-            background: linear-gradient(to right, #60a5fa, #3b82f6);
-            -webkit-background-clip: text;
-            color: transparent;
-        }
+        h1 { margin: 0; color: var(--primary); }
 
-        .controls button, .action-btn {
-            background-color: var(--primary);
-            color: white;
-            border: none;
+        .controls { display: flex; gap: 1rem; }
+
+        button {
+            background-color: var(--surface-color);
+            color: var(--text-main);
+            border: 1px solid #334155;
             padding: 0.5rem 1rem;
             border-radius: 0.5rem;
             cursor: pointer;
             font-weight: 600;
-            transition: all 0.2s ease;
-            margin-left: 0.5rem;
+            transition: all 0.2s;
         }
 
-        .controls button:hover, .action-btn:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
-
-        .table-container {
-            background-color: var(--surface-color);
-            border-radius: 1rem;
-            border: 1px solid var(--border);
-            overflow: hidden;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
-        }
+        button:hover { background-color: #334155; }
+        
+        .upload-btn { background-color: var(--primary); color: white; border: none; }
+        .upload-btn:hover { background-color: #2563eb; }
 
         table {
             width: 100%;
             border-collapse: collapse;
+            background-color: var(--surface-color);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 1rem;
             text-align: left;
+            border-bottom: 1px solid #334155;
         }
 
-        th {
-            background-color: #0f172a;
-            color: var(--text-muted);
-            padding: 1rem;
-            font-weight: 500;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        td {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.95rem;
-        }
-
-        tr:last-child td {
-            border-bottom: none;
-        }
-
-        .row-alert {
-            background-color: rgba(245, 158, 11, 0.1);
-            border-left: 4px solid var(--warning);
+        th { background-color: #0f172a; font-weight: 600; color: var(--text-muted); }
+        
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
         }
         
-        .row-complete {
-            background-color: rgba(16, 185, 129, 0.05);
-            border-left: 4px solid var(--success);
-        }
+        .bg-gray { background-color: #334155; }
+        .bg-green { background-color: rgba(16, 185, 129, 0.2); border: 1px solid var(--success); color: var(--success); }
+        .bg-orange { background-color: rgba(245, 158, 11, 0.2); border: 1px solid var(--warning); color: var(--warning); }
+        
+        .row-warning { background-color: rgba(245, 158, 11, 0.05); }
 
-        .badge {
-            padding: 0.25rem 0.5rem;
-            border-radius: 999px;
+        .copy-btn {
             font-size: 0.75rem;
-            font-weight: 600;
-            background: #334155;
+            padding: 0.25rem 0.5rem;
+            margin-left: 0.5rem;
+            background: #0f172a;
+            color: var(--primary);
         }
 
-        .badge.alert { background: var(--warning); color: #000; }
-        .badge.success { background: var(--success); color: #fff; }
+        .audit-link {
+            cursor: pointer;
+            text-decoration: underline;
+            color: var(--primary);
+            font-weight: bold;
+        }
+        .audit-link:hover { color: #60a5fa; }
 
         .hidden { display: none !important; }
 
-        .copy-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid var(--border);
-            color: #fff;
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
-            font-size: 0.75rem;
-            cursor: pointer;
-            margin-right: 0.25rem;
-            transition: 0.2s;
+        /* Modal Styles */
+        .modal {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100;
+            display: flex; align-items: center; justify-content: center; padding: 2rem;
         }
-        .copy-btn:hover { background: rgba(255, 255, 255, 0.2); }
-        .file-upload-label { cursor: pointer; }
-        input[type="file"] { display: none; }
+        .modal-content {
+            background: var(--surface-color); padding: 2rem; border-radius: 1rem;
+            max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;
+        }
+        
+        .audit-entry {
+            background: rgba(0,0,0,0.2);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Highly Optimized Print CSS */
+        @media print {
+            body { 
+                background: white; 
+                margin: 0; 
+                padding: 0; 
+            }
+            .header, .table-container, #print-controls { 
+                display: none !important; 
+            }
+            #printModal { 
+                position: static; 
+                background: white; 
+                padding: 0; 
+                display: block !important; 
+            }
+            .modal-content {
+                background: white;
+                box-shadow: none;
+                padding: 0;
+                max-width: none;
+                overflow: visible;
+                border-radius: 0;
+            }
+            #print-area {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 1rem !important;
+                margin: 0 !important;
+            }
+            .card-wrapper {
+                page-break-inside: avoid;
+            }
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="title">
+        <div>
             <h1>Testing Tracker</h1>
-            <p style="color: var(--text-muted); margin-top: 0.25rem; font-size: 0.9rem;" id="last-updated">Updating live...</p>
+            <p id="last-updated" style="margin: 0; padding-top: 0.5rem; color: var(--text-muted); font-size: 0.85rem;">Connecting...</p>
         </div>
         <div class="controls">
-            <label class="action-btn file-upload-label">
+            <label class="upload-btn">
                 Import CSV
-                <input type="file" id="csvFileInput" accept=".csv">
+                <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
             </label>
             <button onclick="exportData()">Export Data</button>
             <button onclick="showPrintModal()" style="background-color: var(--warning); color: black;">Print Cards</button>
@@ -150,20 +175,30 @@
     </div>
 
     <!-- Print Modal -->
-    <div id="printModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 2rem;">
-        <div style="background: var(--surface-color); padding: 2rem; border-radius: 1rem; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <div id="printModal" class="modal hidden">
+        <div class="modal-content">
+            <div id="print-controls" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <h2 style="margin: 0;">Print Student Cards</h2>
-                <button onclick="document.getElementById('printModal').classList.add('hidden')" class="copy-btn">Close</button>
+                <div>
+                    <button onclick="window.print()" class="btn" style="background: var(--success); color: white;">Print Now</button>
+                    <button onclick="document.getElementById('printModal').classList.add('hidden')" class="copy-btn">Close</button>
+                </div>
             </div>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
-                These cards contain the student's name and plan inside the QR code. This allows the scanner to work even when it can't reach your laptop.
-            </p>
             <div id="print-area" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                 <!-- Cards generated here -->
             </div>
-            <div style="margin-top: 2rem; text-align: right;">
-                <button onclick="window.print()" class="btn" style="background: var(--success); width: auto;">Print Now</button>
+        </div>
+    </div>
+
+    <!-- Audit Modal -->
+    <div id="auditModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 500px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 style="margin: 0;" id="audit-title">Test Log</h2>
+                <button onclick="document.getElementById('auditModal').classList.add('hidden')" class="copy-btn">Close</button>
+            </div>
+            <div id="audit-area">
+                <!-- Audit list goes here -->
             </div>
         </div>
     </div>
@@ -175,12 +210,12 @@
                     <th>Student ID</th>
                     <th>Name / Grade</th>
                     <th>Status / Progress</th>
-                    <th>Tests Completed</th>
+                    <th>Tests Details</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody id="student-tbody">
-                <!-- Rows injected via JS -->
+                <!-- Rows injected here -->
             </tbody>
         </table>
     </div>
@@ -201,6 +236,17 @@
             }
         }
 
+        function getRequiredTestsList(s) {
+            let tests = [];
+            if(s.ela_1) tests.push("ELA-1");
+            if(s.ela_2) tests.push("ELA-2");
+            if(s.math_1) tests.push("MATH-1");
+            if(s.math_2) tests.push("MATH-2");
+            if(s.sci_1) tests.push("SCI-1");
+            if(s.sci_2) tests.push("SCI-2");
+            return tests;
+        }
+
         function showPrintModal() {
             const modal = document.getElementById('printModal');
             const area = document.getElementById('print-area');
@@ -209,14 +255,19 @@
 
             studentsData.forEach(s => {
                 const card = document.createElement('div');
-                card.style = "border: 1px solid #ccc; padding: 1rem; border-radius: 0.5rem; background: white; color: black; display: flex; align-items: center; gap: 1rem; page-break-inside: avoid;";
+                card.className = "card-wrapper";
+                card.style = "border: 1px solid #ccc; padding: 1rem; border-radius: 0.5rem; background: white; color: black; display: flex; align-items: center; gap: 1rem;";
                 
-                // Format: ID | Name | Grade | Tests | Phone | Is2Day | IsSelf
-                const qrData = `${s.id}|${s.name}|${s.grade || ''}|${s.required_tests}|${s.parent_phone}|${s.is_two_day ? 'true' : 'false'}|${s.is_self_driver ? 'true' : 'false'}`;
+                // Compress Boolean tests into a binary string for QR Code size efficiency
+                // format: ID|Name|Grade|Phone|E1,E2,M1,M2,S1,S2|Is2Day|IsSelfDriver
+                const binTests = [s.ela_1, s.ela_2, s.math_1, s.math_2, s.sci_1, s.sci_2].map(b => b ? 1 : 0).join(',');
+                const qrData = `${s.id}|${s.name}|${s.grade || ''}|${s.parent_phone}|${binTests}|${s.is_two_day ? 'true' : 'false'}|${s.is_self_driver ? 'true' : 'false'}`;
                 
                 const qrDiv = document.createElement('div');
                 new QRCode(qrDiv, { text: qrData, width: 110, height: 110 });
                 card.appendChild(qrDiv);
+
+                const requiredTestsStr = getRequiredTestsList(s).join(', ');
 
                 const rightCol = document.createElement('div');
                 rightCol.style.flex = "1";
@@ -227,8 +278,8 @@
                         User: ${s.username} <br>Pass: ${s.password}
                     </div>
                     <div style="font-size: 0.85rem; color: #666; line-height: 1.4;">
-                        <strong>Tests:</strong> ${s.required_tests}<br>
-                        <strong>Plan:</strong> ${s.is_two_day ? '2-Day' : '1-Day'} | ${s.is_self_driver ? 'Self Driver' : 'Require Pickup'}
+                        <strong>Tests:</strong> ${requiredTestsStr}<br>
+                        <strong>Plan:</strong> ${s.is_two_day ? '2-Day' : '1-Day'} | ${s.is_self_driver ? 'Self Driver' : 'Pickup'}
                     </div>
                 `;
                 
@@ -237,48 +288,68 @@
             });
         }
 
+        function showAuditModal(studentId) {
+            const student = studentsData.find(s => s.id === studentId);
+            if(!student) return;
+            
+            document.getElementById('audit-title').innerText = `Test Log: ${student.name}`;
+            const area = document.getElementById('audit-area');
+            area.innerHTML = '';
+            
+            if(student.scans.length === 0) {
+                area.innerHTML = '<p>No records found.</p>';
+            } else {
+                student.scans.forEach(sc => {
+                    const date = new Date(sc.timestamp);
+                    const timeStr = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    area.innerHTML += `
+                        <div class="audit-entry">
+                            <div style="font-weight: bold; color: var(--primary); width: 100px;">${sc.test_name}</div>
+                            <div style="color: var(--text-muted); flex: 1;">${sc.teacher_name}</div>
+                            <div style="font-family: monospace;">${timeStr}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            document.getElementById('auditModal').classList.remove('hidden');
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+        }
+
         function renderTable() {
             tbody.innerHTML = '';
             
             studentsData.forEach(student => {
-                const required = student.required_tests ? student.required_tests.split(',').map(s=>s.trim()).filter(x=>x) : [];
-                // standard scans (not check in/out)
-                const testScans = student.scans.filter(s => s.test_name !== 'CHECK-IN' && s.test_name !== 'CHECK-OUT');
-                const completedTests = testScans.map(s => s.test_name);
-                
-                const numTotal = required.length;
-                const numDone = completedTests.length;
-                const remaining = numTotal - numDone;
-                
-                let rowClass = "";
-                let statusBadge = `<span class="badge">Checked Out</span>`;
-                const isCheckedOut = student.scans.some(s => s.test_name === 'CHECK-OUT');
-
-                if (isCheckedOut) {
-                    rowClass = "row-complete";
-                } else if (!student.checked_in) {
-                    statusBadge = `<span class="badge" style="background:#475569">Awaiting Check-in</span>`;
-                } else if (remaining === 1 && numTotal > 0) {
-                    rowClass = "row-alert";
-                    statusBadge = `<span class="badge alert">1 Test Left!</span>`;
-                } else if (remaining === 0 && numTotal > 0) {
-                    rowClass = "row-complete";
-                    statusBadge = `<span class="badge success">Done Testing</span>`;
-                } else {
-                    statusBadge = `<span class="badge">In Progress: ${numDone}/${numTotal}</span>`;
-                }
-
                 const tr = document.createElement('tr');
-                if (rowClass) tr.className = rowClass;
+                
+                const required = getRequiredTestsList(student);
+                const testScans = student.scans.filter(s => s.test_name !== 'CHECK-IN' && s.test_name !== 'CHECK-OUT');
+                const completedStr = testScans.map(s => s.test_name).join(', ');
+                const isCheckedIn = student.scans.some(s => s.test_name === 'CHECK-IN');
+                
+                let isLastTest = false;
+                let statusHtml = '';
 
-                let actionHtml = '';
-                if (remaining === 1 && student.parent_phone && !isCheckedOut) {
-                    const msg = `Hi! ${student.name} is on their last test and will be finishing up shortly. You can head over to pick them up.${student.is_self_driver ? ' They are cleared to drive themselves home as well.' : ''}`;
-                    actionHtml = `
-                        <button class="copy-btn" onclick="copyText('${student.parent_phone}', this)">📋 Copy Phone</button>
-                        <button class="copy-btn" onclick="copyText('${msg.replace(/'/g, "\\'")}', this)">📋 Copy Text</button>
-                    `;
+                if (student.scans.some(s => s.test_name === 'CHECK-OUT')) {
+                    statusHtml = `<span class="status-badge bg-gray">Checked Out</span>`;
+                } else if (!isCheckedIn) {
+                    statusHtml = `<span class="status-badge bg-gray">Awaiting Check-in</span>`;
+                } else {
+                    const rem = required.length - testScans.length;
+                    if (rem === 1) {
+                        isLastTest = true;
+                        statusHtml = `<span class="status-badge bg-orange">1-Test Left!</span>`;
+                    } else if (rem <= 0) {
+                        statusHtml = `<span class="status-badge bg-green">All Complete (${required.length}/${required.length})</span>`;
+                    } else {
+                        statusHtml = `<span class="status-badge bg-green">Checked In (${testScans.length}/${required.length})</span>`;
+                    }
                 }
+
+                if (isLastTest) tr.className = 'row-warning';
 
                 tr.innerHTML = `
                     <td style="font-family: monospace; color: var(--primary)">
@@ -293,22 +364,23 @@
                             ${student.parent_phone || 'No Phone'}
                         </span>
                     </td>
-                    <td>${statusBadge}</td>
-                    <td>${completedTests.length > 0 ? completedTests.join(', ') : '-'}</td>
-                    <td>${actionHtml}</td>
+                    <td>${statusHtml}</td>
+                    <td>
+                        <div style="font-size: 0.8rem;">
+                            <strong>Req:</strong> ${required.join(', ')}<br>
+                            <strong>Done:</strong> <span class="audit-link" onclick="showAuditModal('${student.id}')">${completedStr || 'None'}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <button onclick="copyToClipboard('${student.parent_phone}')" class="copy-btn">Copy Phone</button>
+                        ${isLastTest && !student.is_self_driver ? `<button onclick="copyToClipboard('Hello, ${student.name} is on their last test and should be checked out within 45 minutes.')" class="copy-btn" style="background: var(--warning); color: black;">Copy Text</button>` : ''}
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        async function copyText(text, btn) {
-            await navigator.clipboard.writeText(text);
-            const orig = btn.innerText;
-            btn.innerText = "✓ Copied!";
-            setTimeout(() => { btn.innerText = orig; }, 1500);
-        }
-
-        // CSV Import logic
+        // CSV Upload using regex to ignore commas inside quotes
         document.getElementById('csvFileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -316,52 +388,90 @@
             const reader = new FileReader();
             reader.onload = async function(event) {
                 const text = event.target.result;
-                const lines = text.split(/\r?\n/);
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
+                
+                // Matches commas not inside quotes
+                const regex = /(".*?"|[^",\s]+)(?=\s*,|\s*$)/g;
+                
+                // Fallback basic parser for headers
+                const splitCsvLine = (str) => {
+                    let p = '', row = [''], i = 0, r = 0, s = !0, l;
+                    for (l of str) {
+                        if ('"' === l) {
+                            if (s && l === p) row[i] += l;
+                            s = !s;
+                        } else if (',' === l && s) l = row[++i] = '';
+                        else row[i] += l;
+                        p = l;
+                    }
+                    return row.map(x => x.trim().replace(/^"|"$/g, ''));
+                };
+
+                const headers = splitCsvLine(lines[0]).map(s => s.toLowerCase());
                 const result = [];
-                const headers = lines[0].split(',').map(s => s.trim().toLowerCase().replace(/"/g, ''));
                 
                 for(let i=1; i<lines.length; i++){
-                    if(!lines[i].trim()) continue;
+                    const values = splitCsvLine(lines[i]);
                     const obj = {};
-                    const currentline = lines[i].split(',').map(s => s.trim().replace(/"/g, ''));
-                    for(let j=0; j<headers.length; j++){
-                        if (headers[j]) {
-                            let val = currentline[j] || "";
-                            if (headers[j] === 'is_two_day' || headers[j] === 'is_self_driver') {
-                                val = (val.toLowerCase() === 'true' || val === '1' || val.toLowerCase() === 'yes');
-                            }
-                            obj[headers[j]] = val;
-                        }
-                    }
-                    result.push(obj);
+                    headers.forEach((h, idx) => {
+                        obj[h] = values[idx] || '';
+                    });
+                    
+                    if (!obj.id) continue;
+                    
+                    const toBool = (val) => val.toLowerCase() === 'yes' || val.toLowerCase() === 'true';
+
+                    result.push({
+                        id: obj.id, 
+                        name: obj.name,
+                        username: obj.username,
+                        password: obj.password,
+                        grade: obj.grade,
+                        parent_phone: obj.parent_phone,
+                        ela_1: toBool(obj.ela_1),
+                        ela_2: toBool(obj.ela_2),
+                        math_1: toBool(obj.math_1),
+                        math_2: toBool(obj.math_2),
+                        sci_1: toBool(obj.sci_1),
+                        sci_2: toBool(obj.sci_2),
+                        is_two_day: toBool(obj.is_two_day),
+                        is_self_driver: toBool(obj.is_self_driver)
+                    });
                 }
 
-                if(confirm(`Import ${result.length} students? This creates a fresh database.`)) {
+                try {
                     await fetch('/api/import', {
                         method: 'POST',
-                        headers: {'Content-Type':'application/json'},
-                        body: JSON.stringify({students: result})
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ students: result })
                     });
+                    alert(`Imported ${result.length} students successfully.`);
                     loadData();
+                } catch (err) {
+                    alert('Import failed.');
+                    console.error(err);
                 }
             };
             reader.readAsText(file);
-            this.value = ''; // Reset
         });
 
         // Simple CSV export
         function exportData() {
             let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "ID,Name,Username,Password,Grade,Phone,Required Tests,Tests Completed,Status,Two-Day,Self-Driver\n";
+            csvContent += "ID,Name,Username,Password,Grade,Phone,ELA-1,ELA-2,MATH-1,MATH-2,SCI-1,SCI-2,Tests Completed,Status,Two-Day,Self-Driver\n";
             
             studentsData.forEach(s => {
-                const required = s.required_tests ? s.required_tests.split(',').map(x=>x.trim()).filter(x=>x) : [];
+                const required = getRequiredTestsList(s);
                 const testScans = s.scans.filter(sc => sc.test_name !== 'CHECK-IN' && sc.test_name !== 'CHECK-OUT');
                 const completed = testScans.map(sc => sc.test_name).join(';');
                 const checkedOut = s.scans.some(sc => sc.test_name === 'CHECK-OUT') ? 'Checked Out' : 'Active';
                 
                 const row = [
-                    s.id, s.name, s.username, s.password, s.grade, s.parent_phone, s.required_tests, completed, checkedOut,
+                    s.id, s.name, s.username, s.password, s.grade, s.parent_phone, 
+                    s.ela_1?'Yes':'No', s.ela_2?'Yes':'No', 
+                    s.math_1?'Yes':'No', s.math_2?'Yes':'No', 
+                    s.sci_1?'Yes':'No', s.sci_2?'Yes':'No',
+                    completed, checkedOut,
                     s.is_two_day ? 'Yes' : 'No', s.is_self_driver ? 'Yes' : 'No'
                 ].map(x => `"${x || ''}"`).join(',');
                 
@@ -371,13 +481,11 @@
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `testing_tracker_export_${new Date().getTime()}.csv`);
+            link.setAttribute("download", `Testing_Log_${new Date().toISOString().split('T')[0]}.csv`);
             document.body.appendChild(link);
             link.click();
-            document.body.removeChild(link);
         }
 
-        // Poll every 5s
         setInterval(loadData, 5000);
         loadData();
     </script>
