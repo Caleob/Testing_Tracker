@@ -5,7 +5,7 @@ const path = require('path');
 
 const app = express();
 const PORT = 3000;
-const CLOUD_RELAY_URL = "https://script.google.com/macros/s/AKfycbxTvfYtcdY732FaG3VN3UKf7i7jtwj3DUIhmyvhkA6gsofX8VIv9V1tQGDCI9MscTcYEw/exec";
+const CLOUD_RELAY_URL = "https://script.google.com/macros/s/AKfycbzVbkuOnz0hkHl4naN5KuqB-YIWEDQ-OO_x-On8TCf2CPgWn327P54RiqvHCykGMcHyGg/exec";
 
 app.use(cors());
 app.use(express.json());
