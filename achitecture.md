@@ -1,109 +1,69 @@
-##Goal
-I'm trying to streamline state testing for 600-800 students. Currently we use a clipboard and a shared google doc decentralized over 10 testing sites all over Kansas. 
-Each student takes 2-6 individual tests (ELA-1, ELA-2, MATH-1,MATH-2, SCI-1, SCI-2)
+# Testing Tracker - Architecture & System Design
 
-When a student checks in they are given a small slip of paper with their username and password. Each time they complete a test we write down the time it is completed in pencil and then mark that test completed on a shared spreadsheet. When students are on their last test we text a parent or gaurdian that their student is nearing completiion and will be ready to go soon.
-The paper shows they completed each test as the worst case scenario is the student leaving without completing all required tests.
+This repository contains a robust, hybrid cloud/local system designed to orchestrate state testing logistics across multiple teacher proctors while preserving strict student data privacy and entirely bypassing school firewall port-forwarding restrictions.
 
-Let's improve and modernize that workflow. I'm thinking something can be done with QR codes. When a student completes a test a teacher scans it and that updates a central source of truth.
-On their last test an alert pops up to trigger staff contact with an automatic clipboard copy function for phone numbers and text message content (separately).
-Analyze the problem and provide out of the box thinking to manage this huge logistical challenge.
+## 🏗️ The Tech Stack
 
-## Problem Analysis
-
-Here's what you're actually managing:
-
-| Challenge | Current Pain | Root Cause |
-|---|---|---|
-| Proof of completion | Paper slip + pencil | No persistent, scannable identity |
-| Central truth | Shared Google Doc (race conditions, lag) | No authoritative write endpoint |
-| Last-test detection | Manual counting | No completion state machine |
-| Parent alert | Manual texting | No event trigger |
-
-The core insight: **each student needs a scannable identity card that encodes their test roster, and each scan needs to write a timestamped event to a single database.**
+1.  **Backend (The "Brain"):** Node.js and Express
+2.  **Database:** Local SQLite (`database.sqlite`)
+3.  **Cloud Relay:** Google Apps Script (Web App)
+4.  **Frontend (Scanner):** Vanilla HTML/JS with `html5-qrcode` hosted on GitHub Pages
+5.  **Frontend (Dashboard):** Native Web UI hosted on `localhost:3000`
 
 ---
 
-## Recommended System Design
+## ⚙️ How It Works (The Data Pipeline)
 
-### The Student Card (replaces the paper slip)
+Because school networks routinely block inbound connections (prohibiting systems like `localtunnel` or standard port forwarding), this system leverages a **Stateless Polling Architecture** via a Google Cloud "Mailbox".
 
-A **laminated or cardstock half-sheet** (think index card size) with:
+### 1. Data Import & Generation
+The user imports a CSV (`sample_students.csv`) into the Local Dashboard running on the Check-in Desk laptop. The laptop creates local SQLite records. It then generates printable **High-Density QR Cards**. The QR code doesn't just contain an ID; it contains the student's *entire record* compressed into a boolean byte-string (e.g., `STU001|John Doe|11|555-0101|1,1,0,0,1,0|...`). 
 
-- Student name + ID printed large
-- Username / password printed (same as now)
-- **One QR code per required test** — labeled ELA-1, ELA-2, etc., arranged in a row
-- Each QR code encodes a unique URL: `http://[your-server]/checkin?student=12345&test=ELA-1`
+### 2. The Stateless Scanner (GitHub Pages)
+Teachers walk the room and load the Scanner App from a public GitHub Pages URL. Because the QR code contains the full student record, the scanner does **not** need to request roster information from the master laptop. It decrypts the QR byte-string locally, instantly determining what tests the student needs to take, rendering the UI dynamically. 
 
-Staff workflow: student finishes a test → proctor scans *that test's* QR square → done. The card stays with the student as a physical backup. No die-flipping, no ambiguity about which test was just completed.
+### 3. The Fire-and-Forget Ping
+When a teacher taps "Complete: Math-1", the phone fires an asynchronous, fire-and-forget HTTP `POST` to a **Google Apps Script Web App**. The phone interface instantly resets and shows a "Success" message without waiting to hear back. 
+The Google script acts solely as a secure queue/mailbox, adding `{"student_id": "STU1", "action": "TEST_COMPLETE", "teacher": "Mr. Smith"}` to its list.
 
-### The Backend (Node.js, runs on your laptop)
-
-A tiny Express server that:
-1. Receives GET requests from QR scans
-2. Writes `{ studentId, test, timestamp, site }` to a SQLite file (or Google Sheet via Apps Script)
-3. Checks: *is this the student's last required test?* → if yes, flags for parent contact alert
-4. Serves a live dashboard page showing all students + completion state across all 10 sites
-
-### The Alert (MVP version for tomorrow)
-
-No Twilio needed yet. When a student hits their last test, the dashboard **turns their row red/orange and plays an audio chime** on the proctor's device. A staff member at each site has the dashboard open on a Chromebook — they see the alert and make the manual text. This is a huge upgrade from counting by hand.
-
-**Post-MVP:** Twilio free tier costs ~$1/month and the Node server can fire the text automatically. Easy upgrade path.
+### 4. The Dashboard Sync
+Every 5 seconds, the `server.js` Node instance on the laptop explicitly `fetch()`es the Google Apps Script mailbox. 
+*   If new scans are found, it pulls them down.
+*   It immediately tells Google to "clear" the mailbox.
+*   It writes the scans to the local `database.sqlite` and calculates progress.
+*   The Dashboard UI refreshes, performing duplicate scan detection and flagging any anomalies (e.g. two teachers accidentally logging the same math test).
 
 ---
 
-## MVP Build Plan for Tomorrow
+## 📁 Repository Structure
 
-### Tonight (2–3 hours total)
+### `server.js`
+The core Node.js server. 
+*   Initializes the SQLite schema (`students` and `scans` tables).
+*   Hosts the local `/api/import` and `/api/dashboard` REST endpoints for the Dashboard UI.
+*   Runs the 5-second `setInterval` loop to poll and clear the Google Cloud Relay.
+*   **Security Note:** Keeps all Personal Identifiable Information (PII) localized purely to the desk laptop; name and phone fields are never sent to the cloud.
 
-**Hour 1 — Data prep**
-- Export your student roster to a CSV: `studentId, name, site, tests_required, parent_phone`
-- `tests_required` is a comma-separated list like `ELA-1,ELA-2,MATH-1`
-- This becomes your source of truth
+### `public/index.html` (Admin Dashboard)
+The master terminal for the front desk.
+*   **Regex CSV Parser:** Safely imports the student roster templates.
+*   **Print Engine:** Contains an aggressive `@media print` CSS block that hides the dashboard UI and cleanly formats the high-density QR cards into a tight, ink-saving grid.
+*   **Audit Logic:** Calculates total requirements versus completed scans. Highlights cells in Orange (1-Test left warning) and Green (Done), while painting duplicated scans in Red. Clicking tests opens the Audit Modal showing exact Teacher Timestamp logs.
 
-**Hour 1.5 — Node server**
-- Express + SQLite (or even just a JSON flat file for tomorrow)
-- Three routes: `/checkin` (scan handler), `/dashboard` (live view), `/status/:studentId`
-- I can generate this entire server for you — maybe 150 lines of code
+### `public/scanner.html` (Teacher Phone App)
+The mobile worker node.
+*   **Teacher Authentication:** Prompts the teacher for their name on first-load and saves it to local-storage to append to all future network payloads.
+*   **Stateless Processing:** Relies purely on extracting properties from the QR block.
+*   **Network Payload:** Utilizes `fetch` under standard CORS configurations to dump JSON payloads into Google execution endpoints seamlessly.
 
-**Hour 2.5 — QR card generation**
-- Python script reads your CSV and generates a PDF of student cards
-- Each card has one QR per required test, auto-laid out
-- Print, cut, done — or print on Avery label stock if you want to attach to a lanyard
+### `public/utils.js` (Audio Service)
+A lightweight Web Audio API wrapper that synthesizes explicit "Ta-Da!" chords when tests are logged, or upbeat arpeggios when students are checked in/out. This gives teachers critical auditory confirmation without looking at the screen.
 
-### At the Test Sites
+### `sample_students.csv`
+The strict templated CSV roster requiring 14 explicit columns (ID, Name, Username, Password, Grade, 6 boolean Test Columns, Phone, 2-Day Boolean, Self-Driver Boolean).
 
-- Your laptop runs the server on your local network (or hotspot)
-- Staff at each site open `http://[your-ip]:3000/dashboard` on their Chromebook
-- Proctors scan QR codes with their personal phones — no app needed, it's just a URL
-- Dashboard auto-refreshes every 10 seconds
+### `walkthrough.md`
+A plain-English operational guide tracking how to boot up the system natively. 
 
----
-
-## What I Can Build Right Now
-
-Tell me which to start with and I'll generate it immediately:
-
-1. **The Node.js server** — checkin endpoint + live dashboard with alert highlighting
-2. **The Python card generator** — reads CSV, outputs a print-ready PDF of student cards with per-test QR codes
-3. **Both** — I'll build them in parallel and they'll talk to each other out of the box
-
-Also confirm: do you have a student roster CSV ready to work from, or do you need the scripts to work from a sample/template first?
-
-Revised Architecture
-Since sites are all over Kansas on different internet connections, your laptop can't be the kitchen for everyone. You need the kitchen on the internet. Best free option for this use case: Render.com — free tier, deploys directly from GitHub, Node.js support, persistent SQLite file. Five minute setup.
-┌─────────────────────────────────────┐
-│         RENDER.COM (free)           │
-│                                     │
-│  Node.js server (Express)           │
-│  └── testing.db (SQLite)            │
-└──────────────┬──────────────────────┘
-               │  Public internet
-    ┌──────────┼──────────────┐
-    │          │              │
-📱 Dodge City  📱 Wichita   💻 Your dashboard
-   proctor      proctor      anywhere
-
-
-QR codes encode https://your-app.onrender.com/checkin?... — works from any phone, anywhere in Kansas, no app install, no login.
+### `.gitignore`
+Ensures that the `database.sqlite`, `node_modules`, and potentially sensitive logs are strictly excluded from GitHub commits, preventing accidental exposure of sensitive student credentials on the public scanner repository.
