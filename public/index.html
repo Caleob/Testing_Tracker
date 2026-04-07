@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testing Tracker Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="/utils.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: #1e293b;
+            --primary: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --alert: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+
+        body {
+            margin: 0;
+            padding: 2rem;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .title h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            background: linear-gradient(to right, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+
+        .controls button, .action-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            margin-left: 0.5rem;
+        }
+
+        .controls button:hover, .action-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .table-container {
+            background-color: var(--surface-color);
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background-color: #0f172a;
+            color: var(--text-muted);
+            padding: 1rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .row-alert {
+            background-color: rgba(245, 158, 11, 0.1);
+            border-left: 4px solid var(--warning);
+        }
+        
+        .row-complete {
+            background-color: rgba(16, 185, 129, 0.05);
+            border-left: 4px solid var(--success);
+        }
+
+        .badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: #334155;
+        }
+
+        .badge.alert { background: var(--warning); color: #000; }
+        .badge.success { background: var(--success); color: #fff; }
+
+        .hidden { display: none !important; }
+
+        .copy-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            margin-right: 0.25rem;
+            transition: 0.2s;
+        }
+        .copy-btn:hover { background: rgba(255, 255, 255, 0.2); }
+        .file-upload-label { cursor: pointer; }
+        input[type="file"] { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="title">
+            <h1>Testing Tracker</h1>
+            <p style="color: var(--text-muted); margin-top: 0.25rem; font-size: 0.9rem;" id="last-updated">Updating live...</p>
+        </div>
+        <div class="controls">
+            <label class="action-btn file-upload-label">
+                Import CSV
+                <input type="file" id="csvFileInput" accept=".csv">
+            </label>
+            <button onclick="exportData()">Export Data</button>
+            <button onclick="showPrintModal()" style="background-color: var(--warning); color: black;">Print Cards</button>
+        </div>
+    </div>
+
+    <!-- Print Modal -->
+    <div id="printModal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 2rem;">
+        <div style="background: var(--surface-color); padding: 2rem; border-radius: 1rem; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 style="margin: 0;">Print Student Cards</h2>
+                <button onclick="document.getElementById('printModal').classList.add('hidden')" class="copy-btn">Close</button>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                These cards contain the student's name and plan inside the QR code. This allows the scanner to work even when it can't reach your laptop.
+            </p>
+            <div id="print-area" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <!-- Cards generated here -->
+            </div>
+            <div style="margin-top: 2rem; text-align: right;">
+                <button onclick="window.print()" class="btn" style="background: var(--success); width: auto;">Print Now</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Student ID</th>
+                    <th>Name / Grade</th>
+                    <th>Status / Progress</th>
+                    <th>Tests Completed</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="student-tbody">
+                <!-- Rows injected via JS -->
+            </tbody>
+        </table>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        const tbody = document.getElementById('student-tbody');
+        let studentsData = [];
+
+        async function loadData() {
+            try {
+                const res = await fetch('/api/dashboard');
+                studentsData = await res.json();
+                renderTable();
+                document.getElementById('last-updated').innerText = `Last updated: ${new Date().toLocaleTimeString()}`;
+            } catch (err) {
+                console.error("Failed to load dashboard data", err);
+            }
+        }
+
+        function showPrintModal() {
+            const modal = document.getElementById('printModal');
+            const area = document.getElementById('print-area');
+            modal.classList.remove('hidden');
+            area.innerHTML = '';
+
+            studentsData.forEach(s => {
+                const card = document.createElement('div');
+                card.style = "border: 1px solid #ccc; padding: 1rem; border-radius: 0.5rem; background: white; color: black; display: flex; align-items: center; gap: 1rem; page-break-inside: avoid;";
+                
+                // Format: ID | Name | Grade | Tests | Phone | Is2Day | IsSelf
+                const qrData = `${s.id}|${s.name}|${s.grade || ''}|${s.required_tests}|${s.parent_phone}|${s.is_two_day ? 'true' : 'false'}|${s.is_self_driver ? 'true' : 'false'}`;
+                
+                const qrDiv = document.createElement('div');
+                new QRCode(qrDiv, { text: qrData, width: 110, height: 110 });
+                card.appendChild(qrDiv);
+
+                const rightCol = document.createElement('div');
+                rightCol.style.flex = "1";
+                rightCol.innerHTML = `
+                    <div style="font-weight: bold; font-size: 1.3rem; margin-bottom: 0.25rem;">${s.name} ${s.grade ? `(${s.grade})` : ''}</div>
+                    <div style="font-family: monospace; font-size: 0.9rem; margin-bottom: 0.5rem; color: #444;">ID: ${s.id}</div>
+                    <div style="font-family: monospace; font-size: 1.25rem; font-weight: bold; margin-bottom: 0.5rem; line-height: 1.4; background: #f1f5f9; padding: 0.5rem; border-radius: 0.25rem; display: inline-block;">
+                        User: ${s.username} <br>Pass: ${s.password}
+                    </div>
+                    <div style="font-size: 0.85rem; color: #666; line-height: 1.4;">
+                        <strong>Tests:</strong> ${s.required_tests}<br>
+                        <strong>Plan:</strong> ${s.is_two_day ? '2-Day' : '1-Day'} | ${s.is_self_driver ? 'Self Driver' : 'Require Pickup'}
+                    </div>
+                `;
+                
+                card.appendChild(rightCol);
+                area.appendChild(card);
+            });
+        }
+
+        function renderTable() {
+            tbody.innerHTML = '';
+            
+            studentsData.forEach(student => {
+                const required = student.required_tests ? student.required_tests.split(',').map(s=>s.trim()).filter(x=>x) : [];
+                // standard scans (not check in/out)
+                const testScans = student.scans.filter(s => s.test_name !== 'CHECK-IN' && s.test_name !== 'CHECK-OUT');
+                const completedTests = testScans.map(s => s.test_name);
+                
+                const numTotal = required.length;
+                const numDone = completedTests.length;
+                const remaining = numTotal - numDone;
+                
+                let rowClass = "";
+                let statusBadge = `<span class="badge">Checked Out</span>`;
+                const isCheckedOut = student.scans.some(s => s.test_name === 'CHECK-OUT');
+
+                if (isCheckedOut) {
+                    rowClass = "row-complete";
+                } else if (!student.checked_in) {
+                    statusBadge = `<span class="badge" style="background:#475569">Awaiting Check-in</span>`;
+                } else if (remaining === 1 && numTotal > 0) {
+                    rowClass = "row-alert";
+                    statusBadge = `<span class="badge alert">1 Test Left!</span>`;
+                } else if (remaining === 0 && numTotal > 0) {
+                    rowClass = "row-complete";
+                    statusBadge = `<span class="badge success">Done Testing</span>`;
+                } else {
+                    statusBadge = `<span class="badge">In Progress: ${numDone}/${numTotal}</span>`;
+                }
+
+                const tr = document.createElement('tr');
+                if (rowClass) tr.className = rowClass;
+
+                let actionHtml = '';
+                if (remaining === 1 && student.parent_phone && !isCheckedOut) {
+                    const msg = `Hi! ${student.name} is on their last test and will be finishing up shortly. You can head over to pick them up.${student.is_self_driver ? ' They are cleared to drive themselves home as well.' : ''}`;
+                    actionHtml = `
+                        <button class="copy-btn" onclick="copyText('${student.parent_phone}', this)">📋 Copy Phone</button>
+                        <button class="copy-btn" onclick="copyText('${msg.replace(/'/g, "\\'")}', this)">📋 Copy Text</button>
+                    `;
+                }
+
+                tr.innerHTML = `
+                    <td style="font-family: monospace; color: var(--primary)">
+                        ${student.id}<br>
+                        <span style="font-size: 0.7rem; color: var(--text-muted);">U: ${student.username}<br>P: ${student.password}</span>
+                    </td>
+                    <td>
+                        <strong>${student.name}</strong> <span style="font-size: 0.8rem; opacity: 0.8;">${student.grade ? `Grade ${student.grade}` : ''}</span><br>
+                        <span style="font-size: 0.75rem; color: var(--text-muted)">
+                            ${student.is_two_day ? '2-Day Tester | ' : ''}
+                            ${student.is_self_driver ? 'Self Driver | ' : ''}
+                            ${student.parent_phone || 'No Phone'}
+                        </span>
+                    </td>
+                    <td>${statusBadge}</td>
+                    <td>${completedTests.length > 0 ? completedTests.join(', ') : '-'}</td>
+                    <td>${actionHtml}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function copyText(text, btn) {
+            await navigator.clipboard.writeText(text);
+            const orig = btn.innerText;
+            btn.innerText = "✓ Copied!";
+            setTimeout(() => { btn.innerText = orig; }, 1500);
+        }
+
+        // CSV Import logic
+        document.getElementById('csvFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                const text = event.target.result;
+                const lines = text.split(/\r?\n/);
+                const result = [];
+                const headers = lines[0].split(',').map(s => s.trim().toLowerCase().replace(/"/g, ''));
+                
+                for(let i=1; i<lines.length; i++){
+                    if(!lines[i].trim()) continue;
+                    const obj = {};
+                    const currentline = lines[i].split(',').map(s => s.trim().replace(/"/g, ''));
+                    for(let j=0; j<headers.length; j++){
+                        if (headers[j]) {
+                            let val = currentline[j] || "";
+                            if (headers[j] === 'is_two_day' || headers[j] === 'is_self_driver') {
+                                val = (val.toLowerCase() === 'true' || val === '1' || val.toLowerCase() === 'yes');
+                            }
+                            obj[headers[j]] = val;
+                        }
+                    }
+                    result.push(obj);
+                }
+
+                if(confirm(`Import ${result.length} students? This creates a fresh database.`)) {
+                    await fetch('/api/import', {
+                        method: 'POST',
+                        headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({students: result})
+                    });
+                    loadData();
+                }
+            };
+            reader.readAsText(file);
+            this.value = ''; // Reset
+        });
+
+        // Simple CSV export
+        function exportData() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "ID,Name,Username,Password,Grade,Phone,Required Tests,Tests Completed,Status,Two-Day,Self-Driver\n";
+            
+            studentsData.forEach(s => {
+                const required = s.required_tests ? s.required_tests.split(',').map(x=>x.trim()).filter(x=>x) : [];
+                const testScans = s.scans.filter(sc => sc.test_name !== 'CHECK-IN' && sc.test_name !== 'CHECK-OUT');
+                const completed = testScans.map(sc => sc.test_name).join(';');
+                const checkedOut = s.scans.some(sc => sc.test_name === 'CHECK-OUT') ? 'Checked Out' : 'Active';
+                
+                const row = [
+                    s.id, s.name, s.username, s.password, s.grade, s.parent_phone, s.required_tests, completed, checkedOut,
+                    s.is_two_day ? 'Yes' : 'No', s.is_self_driver ? 'Yes' : 'No'
+                ].map(x => `"${x || ''}"`).join(',');
+                
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `testing_tracker_export_${new Date().getTime()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Poll every 5s
+        setInterval(loadData, 5000);
+        loadData();
+    </script>
+</body>
+</html>
