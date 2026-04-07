@@ -62,7 +62,7 @@ async function syncWithCloud() {
                 if (scan.action === 'CHECK-IN') {
                     db.run(`UPDATE students SET checked_in = 1 WHERE id = ?`, [scan.student_id]);
                     db.run(`INSERT INTO scans (student_id, test_name, teacher_name, timestamp) VALUES (?, ?, ?, ?)`, 
-                        [scan.student_id, 'CHECK-IN', scan.teacher_name || 'Front Desk', scan.timestamp]);
+                        [scan.student_id, 'CHECK-IN', scan.teacher_name || 'Unknown', scan.timestamp]);
                 } else {
                     db.run(`INSERT INTO scans (student_id, test_name, teacher_name, timestamp) VALUES (?, ?, ?, ?)`, 
                         [scan.student_id, scan.test_name || scan.action, scan.teacher_name || 'Unknown', scan.timestamp]);

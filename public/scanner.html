@@ -144,21 +144,17 @@
             <p id="s-id">ID: 12345</p>
         </div>
 
-        <div id="checkin-view" style="display: none;">
+        <div id="selection-view" style="display: none;">
             <div class="info-card" id="s-info-card"></div>
-            <p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin-bottom: 1rem;">
-                Please verify this info is correct. If any details are wrong, notify the Check-In Desk to edit it.
-            </p>
-            <button class="btn btn-success" onclick="submitAction('CHECK-IN')">Confirm details & Check In</button>
-            <button class="btn btn-outline" onclick="cancelAction()">Cancel</button>
-        </div>
+            
+            <button class="btn btn-outline" style="border-color: var(--primary); color: var(--text-main);" onclick="submitAction('CHECK-IN')">📍 Front Desk Check-In</button>
 
-        <div id="test-view" style="display: none;">
-            <h3 style="margin-top: 0;">Log Completed Test</h3>
+            <h3 style="margin-top: 1rem; margin-bottom: 0.5rem;">Log Completed Test</h3>
             <div id="test-buttons"></div>
+            
             <hr style="border-color: #334155; margin: 1.5rem 0;">
             <button class="btn btn-success" onclick="submitAction('CHECK-OUT')" id="btn-checkout">Check-Out / Leaving</button>
-            <button class="btn btn-outline" onclick="cancelAction()">Cancel</button>
+            <button class="btn btn-outline" style="border-color: var(--danger); color: var(--danger);" onclick="cancelAction()">Cancel Scan</button>
         </div>
     </div>
 
@@ -242,25 +238,22 @@
         function showActionUI() {
             document.getElementById('reader-container').style.display = 'none';
             document.getElementById('action-container').style.display = 'flex';
+            document.getElementById('selection-view').style.display = 'block';
 
             document.getElementById('s-name').innerText = currentStudent.name + (currentStudent.grade ? ` (Grade ${currentStudent.grade})` : '');
             document.getElementById('s-id').innerText = `ID: ${currentStudent.id}`;
 
-            const hasBeenCheckedInLocally = window.localStorage.getItem('checked_in_' + currentStudent.id);
+            document.getElementById('s-info-card').innerHTML = `
+                <strong>Contact:</strong> ${currentStudent.phone || 'N/A'}<br>
+                <strong>Plan:</strong> ${currentStudent.is2Day ? '2-Day' : '1-Day'} | ${currentStudent.isSelf ? 'Self Driver' : 'Pickup Needed'}
+            `;
+
+            const container = document.getElementById('test-buttons');
+            container.innerHTML = '';
             
-            if (currentStudent.requiredTests.length > 0 && !hasBeenCheckedInLocally) {
-                document.getElementById('checkin-view').style.display = 'block';
-                document.getElementById('test-view').style.display = 'none';
-                document.getElementById('s-info-card').innerHTML = `
-                    <strong>Contact:</strong> ${currentStudent.phone || 'N/A'}<br>
-                    <strong>Tests:</strong> ${currentStudent.requiredTests.join(', ')}<br>
-                    <strong>Plan:</strong> ${currentStudent.is2Day ? '2-Day' : '1-Day'} | ${currentStudent.isSelf ? 'Self Driver' : 'Pickup Needed'}
-                `;
+            if (currentStudent.requiredTests.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-muted); margin: 0;">No tests required.</p>';
             } else {
-                document.getElementById('checkin-view').style.display = 'none';
-                document.getElementById('test-view').style.display = 'block';
-                const container = document.getElementById('test-buttons');
-                container.innerHTML = '';
                 currentStudent.requiredTests.forEach(test => {
                     const btn = document.createElement('button');
                     btn.className = 'btn';
@@ -277,40 +270,38 @@
             html5QrcodeScanner.resume();
         }
 
-        async function submitAction(actionType, testName = '') {
-            try {
-                // Send to Cloud Relay using text/plain to avoid CORS strict opaque failures
-                await fetch(CLOUD_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: {'Content-Type': 'text/plain;charset=utf-8'},
-                    body: JSON.stringify({
-                        student_id: currentStudent.id,
-                        action: actionType,
-                        test_name: testName,
-                        teacher_name: teacherName // Added teacher name parameter
-                    })
-                });
-
-                // Since we use no-cors, fetch simply resolves immediately upon send.
-                if (actionType === 'CHECK-IN' || actionType === 'CHECK-OUT') {
-                    playFunSong();
-                    if (actionType === 'CHECK-IN') window.localStorage.setItem('checked_in_' + currentStudent.id, 'true');
-                } else {
-                    playTada();
-                }
-
-                document.getElementById('action-container').style.display = 'none';
-                document.getElementById('success-container').style.display = 'flex';
-                setTimeout(() => {
-                    document.getElementById('success-container').style.display = 'none';
-                    document.getElementById('reader-container').style.display = 'flex';
-                    html5QrcodeScanner.resume();
-                }, 1500);
-            } catch (err) {
-                alert("Submission failed. Check your internet connection.");
-                console.error(err);
+        function submitAction(actionType, testName = '') {
+            // 1. Optimistic UI context hooks
+            if (actionType === 'CHECK-IN' || actionType === 'CHECK-OUT') {
+                playFunSong();
+            } else {
+                playTada();
             }
+
+            // 2. Hide modal, show success
+            document.getElementById('action-container').style.display = 'none';
+            document.getElementById('selection-view').style.display = 'none';
+            document.getElementById('success-container').style.display = 'flex';
+            setTimeout(() => {
+                document.getElementById('success-container').style.display = 'none';
+                document.getElementById('reader-container').style.display = 'flex';
+                html5QrcodeScanner.resume();
+            }, 1500);
+
+            // 3. Fire-and-forget Network Request
+            // Google Apps Script no-cors redirects cause fetch to throw a TypeError in some mobile browsers
+            // By not awaiting it, we ensure the UI never halts and the data still delivers!
+            fetch(CLOUD_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {'Content-Type': 'text/plain;charset=utf-8'},
+                body: JSON.stringify({
+                    student_id: currentStudent.id,
+                    action: actionType,
+                    test_name: testName,
+                    teacher_name: teacherName
+                })
+            }).catch(e => console.error("Network relay silent failure:", e));
         }
     </script>
 </body>

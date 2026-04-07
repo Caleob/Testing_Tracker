@@ -327,7 +327,23 @@
                 
                 const required = getRequiredTestsList(student);
                 const testScans = student.scans.filter(s => s.test_name !== 'CHECK-IN' && s.test_name !== 'CHECK-OUT');
-                const completedStr = testScans.map(s => s.test_name).join(', ');
+                
+                const counts = {};
+                testScans.forEach(s => {
+                    counts[s.test_name] = (counts[s.test_name] || 0) + 1;
+                });
+                
+                const completedArray = [];
+                Object.keys(counts).forEach(test => {
+                    if (counts[test] > 1) {
+                        completedArray.push(`<span style="color: var(--danger); font-weight: bold;">${test}(x${counts[test]})</span>`);
+                    } else {
+                        completedArray.push(test);
+                    }
+                });
+                const completedStr = completedArray.join(', ');
+                const uniqueCompletedRequired = Object.keys(counts).filter(test => required.includes(test)).length;
+
                 const isCheckedIn = student.scans.some(s => s.test_name === 'CHECK-IN');
                 
                 let isLastTest = false;
@@ -338,14 +354,14 @@
                 } else if (!isCheckedIn) {
                     statusHtml = `<span class="status-badge bg-gray">Awaiting Check-in</span>`;
                 } else {
-                    const rem = required.length - testScans.length;
+                    const rem = required.length - uniqueCompletedRequired;
                     if (rem === 1) {
                         isLastTest = true;
                         statusHtml = `<span class="status-badge bg-orange">1-Test Left!</span>`;
                     } else if (rem <= 0) {
-                        statusHtml = `<span class="status-badge bg-green">All Complete (${required.length}/${required.length})</span>`;
+                        statusHtml = `<span class="status-badge bg-green">All Complete (${uniqueCompletedRequired}/${required.length})</span>`;
                     } else {
-                        statusHtml = `<span class="status-badge bg-green">Checked In (${testScans.length}/${required.length})</span>`;
+                        statusHtml = `<span class="status-badge bg-green">Checked In (${uniqueCompletedRequired}/${required.length})</span>`;
                     }
                 }
 
