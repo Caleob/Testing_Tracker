@@ -13,6 +13,7 @@
             --surface-color: #1e293b;
             --primary: #3b82f6;
             --success: #10b981;
+            --warning: #f59e0b;
             --danger: #ef4444;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
@@ -416,7 +417,7 @@
                 msg = `Confirm Check-Out`;
                 actionsDiv.innerHTML = `
                     <button class="btn btn-success" onclick="executeAction('CHECK-OUT-DONE')" style="max-width: 100%; padding: 1rem; margin-bottom: 0.75rem;">Done with All Tests</button>
-                    <button class="btn" onclick="executeAction('CHECK-OUT-RETURNING')" style="max-width: 100%; padding: 1rem; margin-bottom: 1rem; background-color: var(--warning); color: black;">Returning Tomorrow</button>
+                    <button class="btn" onclick="executeAction('CHECK-OUT-RETURNING')" style="max-width: 100%; padding: 1rem; margin-bottom: 1rem; background-color: var(--warning); color: white;">Returning Tomorrow</button>
                     <button class="btn btn-outline" onclick="cancelConfirm()" style="max-width: 100%;">Cancel</button>
                 `;
             } else {
