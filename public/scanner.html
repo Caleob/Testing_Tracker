@@ -88,6 +88,7 @@
         }
 
         .btn.btn-success { background-color: var(--success); }
+        .btn.btn-warning { background-color: var(--warning); color: white; }
         .btn.btn-danger { background-color: transparent; border: 2px solid var(--danger); color: var(--danger); }
 
         /* Reader */
@@ -417,7 +418,7 @@
                 msg = `Confirm Check-Out`;
                 actionsDiv.innerHTML = `
                     <button class="btn btn-success" onclick="executeAction('CHECK-OUT-DONE')" style="max-width: 100%; padding: 1rem; margin-bottom: 0.75rem;">Done with All Tests</button>
-                    <button class="btn" onclick="executeAction('CHECK-OUT-RETURNING')" style="max-width: 100%; padding: 1rem; margin-bottom: 1rem; background-color: var(--warning); color: white;">Returning Tomorrow</button>
+                    <button class="btn btn-warning" onclick="executeAction('CHECK-OUT-RETURNING')" style="max-width: 100%; padding: 1rem; margin-bottom: 1rem;">Returning Tomorrow</button>
                     <button class="btn btn-outline" onclick="cancelConfirm()" style="max-width: 100%;">Cancel</button>
                 `;
             } else {
