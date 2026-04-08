@@ -13,6 +13,7 @@
             --surface-color: #1e293b;
             --primary: #3b82f6;
             --success: #10b981;
+            --danger: #ef4444;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
         }
@@ -29,137 +30,193 @@
             overflow: hidden;
         }
 
-        #setup-container {
-            display: flex;
+        .view-container {
+            display: none;
             flex: 1;
             flex-direction: column;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .view-container.active {
+            display: flex;
+        }
+
+        /* Setup Views */
+        #setup-container, #camera-setup-container, #success-container {
             justify-content: center;
             align-items: center;
-            padding: 2rem;
             text-align: center;
         }
 
-        #setup-container input {
+        input, select {
             padding: 1rem;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             border-radius: 0.5rem;
             border: 1px solid var(--text-muted);
+            background-color: var(--surface-color);
+            color: var(--text-main);
             margin-bottom: 1rem;
             width: 100%;
             max-width: 300px;
         }
 
-        #reader-container {
-            flex: 1;
-            display: none; /* hidden until setup completes */
-            flex-direction: column;
-        }
-        
-        #reader {
-            width: 100%;
-            flex: 1;
-            background: #000;
-        }
-
-        #action-container {
-            display: none;
-            padding: 1.5rem;
-            flex: 1;
-            flex-direction: column;
-            background-color: var(--surface-color);
-            overflow-y: auto;
-        }
-
-        #success-container {
-            display: none;
-            flex: 1;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            background-color: var(--success);
-            color: white;
-            font-size: 2rem;
-            font-weight: bold;
-        }
-
-        .student-header {
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-        
-        .student-header h2 { margin: 0; font-size: 1.8rem; }
-        .student-header p { margin: 0.5rem 0 0; color: var(--text-muted); }
-
+        /* Buttons */
         .btn {
             background-color: var(--primary);
             color: white;
             border: none;
-            padding: 1.2rem;
+            padding: 1rem;
             border-radius: 0.75rem;
             font-size: 1.1rem;
             font-weight: 600;
             width: 100%;
+            max-width: 300px;
             margin-bottom: 0.75rem;
             cursor: pointer;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: opacity 0.2s;
         }
 
+        .btn:active { opacity: 0.8; }
+        
         .btn.btn-outline {
             background-color: transparent;
             border: 2px solid var(--text-muted);
-            color: var(--text-muted);
+            color: var(--text-main);
         }
 
         .btn.btn-success { background-color: var(--success); }
+        .btn.btn-danger { background-color: transparent; border: 2px solid var(--danger); color: var(--danger); }
+
+        /* Reader */
+        #reader-container {
+            padding: 0;
+            background: #000;
+            position: relative;
+        }
+
+        .reader-header {
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.9);
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+        }
+
+        #reader {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        
+        #reader video {
+            object-fit: cover !important;
+        }
+
+        /* Student View */
+        .student-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            background: var(--surface-color);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        .student-header h2 { margin: 0; font-size: 1.6rem; }
+        .student-header p { margin: 0.5rem 0 0; color: var(--text-muted); font-size: 1.1rem; }
 
         .info-card {
-            background: rgba(0,0,0,0.2);
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-            font-size: 0.95rem;
+            background: var(--surface-color);
+            padding: 1.25rem;
+            border-radius: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 1rem;
+            line-height: 1.5;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        
+        #success-container { background-color: var(--success); color: white; font-size: 2rem; font-weight: bold; }
+        
+        .confirm-msg {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <div id="setup-container">
+    <!-- Teacher Setup -->
+    <div id="setup-container" class="view-container active">
         <h2>Welcome to Testing Tracker</h2>
         <p style="color: var(--text-muted); margin-bottom: 2rem;">Please enter your name to log tests securely.</p>
         <input type="text" id="teacher-name-input" placeholder="e.g. Mr. Smith">
-        <button class="btn" style="max-width: 300px;" onclick="saveTeacherName()">Start Scanning</button>
+        <button class="btn" onclick="saveTeacherName()">Continue</button>
     </div>
 
-    <div id="reader-container">
-        <div style="padding: 1rem; display: flex; justify-content: space-between; align-items: center; background: #000; border-bottom: 1px solid #333;">
+    <!-- Camera Setup -->
+    <div id="camera-setup-container" class="view-container">
+        <h2>Camera Setup</h2>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Please grant camera permissions and select a camera.</p>
+        
+        <button class="btn" id="btn-request-cam" onclick="requestCameraPermissions()">Grant Camera Access</button>
+        
+        <div id="camera-selection" style="display: none; width: 100%; max-width: 300px;">
+            <select id="camera-select"></select>
+            <button class="btn btn-success" onclick="startScanner()">Start Scanning</button>
+        </div>
+    </div>
+
+    <!-- Scanner -->
+    <div id="reader-container" class="view-container">
+        <div class="reader-header">
             <p style="margin: 0; font-weight: 600;" id="scan-header-title">Scanner</p>
-            <button onclick="changeTeacher()" style="background: transparent; border: 1px solid #666; color: white; border-radius: 0.25rem; padding: 0.25rem 0.5rem;">Change</button>
+            <button onclick="changeTeacher()" style="background: transparent; border: 1px solid var(--text-muted); color: var(--text-main); border-radius: 0.25rem; padding: 0.4rem 0.8rem;">Change User</button>
         </div>
         <div id="reader"></div>
     </div>
 
-    <div id="action-container">
+    <!-- Action Selection -->
+    <div id="action-container" class="view-container">
         <div class="student-header">
             <h2 id="s-name">Student Name</h2>
             <p id="s-id">ID: 12345</p>
         </div>
 
-        <div id="selection-view" style="display: none;">
-            <div class="info-card" id="s-info-card"></div>
-            
-            <button class="btn btn-outline" style="border-color: var(--primary); color: var(--text-main);" onclick="submitAction('CHECK-IN')">📍 Front Desk Check-In</button>
+        <div class="info-card" id="s-info-card"></div>
+        
+        <button class="btn btn-outline" style="border-color: var(--primary); max-width: 100%;" onclick="promptConfirm('CHECK-IN')">📍 Front Desk Check-In</button>
 
-            <h3 style="margin-top: 1rem; margin-bottom: 0.5rem;">Log Completed Test</h3>
-            <div id="test-buttons"></div>
-            
-            <hr style="border-color: #334155; margin: 1.5rem 0;">
-            <button class="btn btn-success" onclick="submitAction('CHECK-OUT')" id="btn-checkout">Check-Out / Leaving</button>
-            <button class="btn btn-outline" style="border-color: var(--danger); color: var(--danger);" onclick="cancelAction()">Cancel Scan</button>
+        <h3 style="margin-top: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">Log Completed Test</h3>
+        <div id="test-buttons"></div>
+        
+        <hr style="border-color: #334155; margin: 2rem 0; width: 100%;">
+        <button class="btn btn-success" style="max-width: 100%;" onclick="promptConfirm('CHECK-OUT')" id="btn-checkout">Check-Out / Leaving</button>
+        <button class="btn btn-danger" style="max-width: 100%; margin-top: 1rem;" onclick="cancelAction()">Cancel Scan</button>
+    </div>
+
+    <!-- Confirm Screen -->
+    <div id="confirm-view" class="view-container" style="justify-content: center; align-items: center;">
+        <div class="confirm-msg" id="confirm-message">Confirm Action</div>
+        <div style="width: 100%; max-width: 300px;">
+            <button class="btn btn-success" onclick="executeAction()" style="max-width: 100%; padding: 1.25rem; font-size: 1.25rem; margin-bottom: 1rem;">Yes</button>
+            <button class="btn btn-outline" onclick="cancelConfirm()" style="max-width: 100%;">Cancel</button>
         </div>
     </div>
 
-    <div id="success-container">
-        <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem;">
+    <!-- Success -->
+    <div id="success-container" class="view-container">
+        <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem;">
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
             <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
@@ -168,17 +225,26 @@
 
     <script>
         const CLOUD_URL = "https://script.google.com/macros/s/AKfycbzVbkuOnz0hkHl4naN5KuqB-YIWEDQ-OO_x-On8TCf2CPgWn327P54RiqvHCykGMcHyGg/exec";
-        let html5QrcodeScanner;
+        
+        let html5QrCode = null;
         let currentStudent = null;
         let teacherName = "";
+        let pendingAction = null;
+        let pendingTest = "";
+
+        // UI State Management
+        function showView(viewId) {
+            document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+        }
 
         window.addEventListener('load', () => {
             teacherName = window.localStorage.getItem('teacherName');
             if (teacherName) {
-                document.getElementById('setup-container').style.display = 'none';
-                document.getElementById('reader-container').style.display = 'flex';
                 document.getElementById('scan-header-title').innerText = `Scanner (${teacherName})`;
-                initScanner();
+                showView('camera-setup-container');
+            } else {
+                showView('setup-container');
             }
         });
 
@@ -190,10 +256,8 @@
             }
             teacherName = input;
             window.localStorage.setItem('teacherName', teacherName);
-            document.getElementById('setup-container').style.display = 'none';
-            document.getElementById('reader-container').style.display = 'flex';
             document.getElementById('scan-header-title').innerText = `Scanner (${teacherName})`;
-            initScanner();
+            showView('camera-setup-container');
         }
 
         function changeTeacher() {
@@ -201,17 +265,64 @@
             location.reload();
         }
 
-        function initScanner() {
-            if (!html5QrcodeScanner) {
-                html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
-                html5QrcodeScanner.render(onScanSuccess);
+        // Camera Logic
+        function requestCameraPermissions() {
+            Html5Qrcode.getCameras().then(devices => {
+                if (devices && devices.length) {
+                    document.getElementById('btn-request-cam').style.display = 'none';
+                    const select = document.getElementById('camera-select');
+                    select.innerHTML = '';
+                    
+                    // Sort devices so back cameras are selected by default if available
+                    let defaultCamId = devices[0].id; // Fallback
+                    devices.forEach(device => {
+                        const opt = document.createElement('option');
+                        opt.value = device.id;
+                        opt.innerText = device.label || `Camera ${select.length + 1}`;
+                        select.appendChild(opt);
+                        
+                        // Heuristic target for back camera
+                        if (device.label.toLowerCase().includes('back') || device.label.toLowerCase().includes('environment')) {
+                            defaultCamId = device.id;
+                        }
+                    });
+                    
+                    select.value = defaultCamId;
+                    document.getElementById('camera-selection').style.display = 'block';
+                }
+            }).catch(err => {
+                alert("Error getting cameras. Please ensure permissions are granted.");
+            });
+        }
+
+        function startScanner() {
+            const cameraId = document.getElementById('camera-select').value;
+            showView('reader-container');
+            
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
             }
+            
+            html5QrCode.start(
+                cameraId, 
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: window.innerWidth / window.innerHeight
+                },
+                onScanSuccess,
+                (errorMessage) => {
+                    // Ignore background scan errors
+                })
+            .catch(err => {
+                alert("Failed to start camera.");
+                showView('camera-setup-container');
+            });
         }
 
         function onScanSuccess(decodedText) {
-            html5QrcodeScanner.pause(true);
+            html5QrCode.pause(true); 
             
-            // Format: ID | Name | Grade | Phone | E1,E2,M1,M2,S1,S2 | Is2Day | IsSelf
             const parts = decodedText.split('|').map(s => s.trim());
             if (parts.length < 5) {
                 currentStudent = { id: parts[0], name: "Student " + parts[0], grade: "", phone: "", requiredTests: [], is2Day: false, isSelf: false };
@@ -232,20 +343,17 @@
                 };
             }
 
-            showActionUI();
+            populateActionUI();
+            showView('action-container');
         }
 
-        function showActionUI() {
-            document.getElementById('reader-container').style.display = 'none';
-            document.getElementById('action-container').style.display = 'flex';
-            document.getElementById('selection-view').style.display = 'block';
-
+        function populateActionUI() {
             document.getElementById('s-name').innerText = currentStudent.name + (currentStudent.grade ? ` (Grade ${currentStudent.grade})` : '');
             document.getElementById('s-id').innerText = `ID: ${currentStudent.id}`;
 
             document.getElementById('s-info-card').innerHTML = `
                 <strong>Contact:</strong> ${currentStudent.phone || 'N/A'}<br>
-                <strong>Plan:</strong> ${currentStudent.is2Day ? '2-Day' : '1-Day'} | ${currentStudent.isSelf ? 'Self Driver' : 'Pickup Needed'}
+                <strong style="margin-top: 0.5rem; display:inline-block;">Plan:</strong> ${currentStudent.is2Day ? '2-Day' : '1-Day'} | ${currentStudent.isSelf ? 'Self Driver' : 'Pickup Needed'}
             `;
 
             const container = document.getElementById('test-buttons');
@@ -265,8 +373,8 @@
                     if (reqs.length > 0) {
                         const rowDiv = document.createElement('div');
                         rowDiv.style.display = 'flex';
-                        rowDiv.style.gap = '0.75rem';
-                        rowDiv.style.marginBottom = '0.75rem';
+                        rowDiv.style.gap = '1rem';
+                        rowDiv.style.marginBottom = '1rem';
                         
                         reqs.forEach(test => {
                             const btn = document.createElement('button');
@@ -274,9 +382,10 @@
                             btn.style.flex = '1';
                             btn.style.margin = '0';
                             btn.style.padding = '1.5rem 1rem';
-                            btn.style.fontSize = '1.25rem';
+                            btn.style.fontSize = '1.1rem';
+                            btn.style.maxWidth = '100%';
                             btn.innerText = test;
-                            btn.onclick = () => submitAction('TEST_COMPLETE', test);
+                            btn.onclick = () => promptConfirm('TEST_COMPLETE', test);
                             rowDiv.appendChild(btn);
                         });
                         
@@ -287,43 +396,63 @@
         }
 
         function cancelAction() {
-            document.getElementById('action-container').style.display = 'none';
-            document.getElementById('reader-container').style.display = 'flex';
-            html5QrcodeScanner.resume();
+            showView('reader-container');
+            html5QrCode.resume();
         }
 
-        function submitAction(actionType, testName = '') {
-            // 1. Optimistic UI context hooks
+        function promptConfirm(actionType, testName = '') {
+            pendingAction = actionType;
+            pendingTest = testName;
+
+            let msg = '';
+            if (actionType === 'CHECK-IN') {
+                msg = `Confirm Check-In`;
+            } else if (actionType === 'CHECK-OUT') {
+                msg = `Confirm Check-Out`;
+            } else {
+                msg = `Confirm ${testName} Test`;
+            }
+            
+            document.getElementById('confirm-message').innerText = msg;
+            showView('confirm-view');
+        }
+
+        function cancelConfirm() {
+            pendingAction = null;
+            pendingTest = "";
+            showView('action-container');
+        }
+
+        function executeAction() {
+            const actionType = pendingAction;
+            const testName = pendingTest;
+
             if (actionType === 'CHECK-IN' || actionType === 'CHECK-OUT') {
                 playFunSong();
             } else {
                 playTada();
             }
 
-            // 2. Hide modal, show success
-            document.getElementById('action-container').style.display = 'none';
-            document.getElementById('selection-view').style.display = 'none';
-            document.getElementById('success-container').style.display = 'flex';
+            // Hide modal, show success
+            showView('success-container');
+            
             setTimeout(() => {
-                document.getElementById('success-container').style.display = 'none';
-                document.getElementById('reader-container').style.display = 'flex';
-                html5QrcodeScanner.resume();
+                showView('reader-container');
+                html5QrCode.resume();
             }, 1500);
 
-            // 3. Fire-and-forget Network Request
-            // Google Apps Script performs a redirect after a successful POST. 
-            // Setting application/json with default CORS handling correctly delivers the payload,
-            // even though the subsequent redirect fails in the browser. We catch and ignore the redirect failure error.
+            // Fire-and-forget Network Request
             fetch(CLOUD_URL, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                mode: 'no-cors',
+                headers: {'Content-Type': 'text/plain;charset=utf-8'},
                 body: JSON.stringify({
                     student_id: currentStudent.id,
                     action: actionType,
                     test_name: testName,
                     teacher_name: teacherName
                 })
-            }).catch(e => console.log("CORS redirect ignored. Payload delivered:", actionType));
+            }).catch(e => console.log("Request ignored/caught:", e));
         }
     </script>
 </body>
