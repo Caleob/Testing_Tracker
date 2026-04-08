@@ -427,10 +427,14 @@
             const actionType = pendingAction;
             const testName = pendingTest;
 
-            if (actionType === 'CHECK-IN' || actionType === 'CHECK-OUT') {
-                playFunSong();
-            } else {
-                playTada();
+            try {
+                if (actionType === 'CHECK-IN' || actionType === 'CHECK-OUT') {
+                    if (typeof playFunSong === 'function') playFunSong();
+                } else {
+                    if (typeof playTada === 'function') playTada();
+                }
+            } catch (err) {
+                console.warn("Audio playback failed:", err);
             }
 
             // Hide modal, show success
@@ -438,7 +442,13 @@
             
             setTimeout(() => {
                 showView('reader-container');
-                html5QrCode.resume();
+                try {
+                    html5QrCode.resume();
+                } catch(e) {
+                    // Fallback to start if resume isn't supported
+                    console.warn("Resume failed, restarting scanner", e);
+                    startScanner();
+                }
             }, 1500);
 
             // Fire-and-forget Network Request
