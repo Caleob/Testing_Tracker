@@ -208,9 +208,8 @@
     <!-- Confirm Screen -->
     <div id="confirm-view" class="view-container" style="justify-content: center; align-items: center;">
         <div class="confirm-msg" id="confirm-message">Confirm Action</div>
-        <div style="width: 100%; max-width: 300px;">
-            <button class="btn btn-success" onclick="executeAction()" style="max-width: 100%; padding: 1.25rem; font-size: 1.25rem; margin-bottom: 1rem;">Yes</button>
-            <button class="btn btn-outline" onclick="cancelConfirm()" style="max-width: 100%;">Cancel</button>
+        <div style="width: 100%; max-width: 300px;" id="confirm-actions">
+            <!-- Buttons injected dynamically -->
         </div>
     </div>
 
@@ -404,13 +403,28 @@
             pendingAction = actionType;
             pendingTest = testName;
 
+            const actionsDiv = document.getElementById('confirm-actions');
             let msg = '';
+            
             if (actionType === 'CHECK-IN') {
                 msg = `Confirm Check-In`;
+                actionsDiv.innerHTML = `
+                    <button class="btn btn-success" onclick="executeAction()" style="max-width: 100%; padding: 1.25rem; font-size: 1.25rem; margin-bottom: 1rem;">Yes</button>
+                    <button class="btn btn-outline" onclick="cancelConfirm()" style="max-width: 100%;">Cancel</button>
+                `;
             } else if (actionType === 'CHECK-OUT') {
                 msg = `Confirm Check-Out`;
+                actionsDiv.innerHTML = `
+                    <button class="btn btn-success" onclick="executeAction('CHECK-OUT-DONE')" style="max-width: 100%; padding: 1rem; margin-bottom: 0.75rem;">Done with All Tests</button>
+                    <button class="btn" onclick="executeAction('CHECK-OUT-RETURNING')" style="max-width: 100%; padding: 1rem; margin-bottom: 1rem; background-color: var(--warning); color: black;">Returning Tomorrow</button>
+                    <button class="btn btn-outline" onclick="cancelConfirm()" style="max-width: 100%;">Cancel</button>
+                `;
             } else {
                 msg = `Confirm ${testName} Test`;
+                actionsDiv.innerHTML = `
+                    <button class="btn btn-success" onclick="executeAction()" style="max-width: 100%; padding: 1.25rem; font-size: 1.25rem; margin-bottom: 1rem;">Yes</button>
+                    <button class="btn btn-outline" onclick="cancelConfirm()" style="max-width: 100%;">Cancel</button>
+                `;
             }
             
             document.getElementById('confirm-message').innerText = msg;
@@ -423,12 +437,12 @@
             showView('action-container');
         }
 
-        function executeAction() {
-            const actionType = pendingAction;
+        function executeAction(overrideAction) {
+            const actionType = overrideAction || pendingAction;
             const testName = pendingTest;
 
             try {
-                if (actionType === 'CHECK-IN' || actionType === 'CHECK-OUT') {
+                if (actionType.startsWith('CHECK-IN') || actionType.startsWith('CHECK-OUT')) {
                     if (typeof playFunSong === 'function') playFunSong();
                 } else {
                     if (typeof playTada === 'function') playTada();

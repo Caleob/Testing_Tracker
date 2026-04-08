@@ -331,11 +331,27 @@
         function renderTable() {
             tbody.innerHTML = '';
             
-            studentsData.forEach(student => {
+            // Sort logic: Last Name, then handle Checked-Out status
+            const sortedData = [...studentsData].sort((a, b) => {
+                const isCheckOutA = a.scans.some(s => s.test_name && s.test_name.startsWith('CHECK-OUT'));
+                const isCheckOutB = b.scans.some(s => s.test_name && s.test_name.startsWith('CHECK-OUT'));
+
+                // If check-out statuses differ, pushed checked-out to bottom
+                if (isCheckOutA !== isCheckOutB) return isCheckOutA ? 1 : -1;
+
+                // Otherwise sort by Last Name
+                const getLastName = (name) => {
+                    const parts = name.trim().split(' ');
+                    return parts[parts.length - 1].toLowerCase();
+                };
+                return getLastName(a.name).localeCompare(getLastName(b.name));
+            });
+
+            sortedData.forEach(student => {
                 const tr = document.createElement('tr');
                 
                 const required = getRequiredTestsList(student);
-                const testScans = student.scans.filter(s => s.test_name !== 'CHECK-IN' && s.test_name !== 'CHECK-OUT');
+                const testScans = student.scans.filter(s => s.test_name !== 'CHECK-IN' && !s.test_name.startsWith('CHECK-OUT'));
                 
                 const counts = {};
                 testScans.forEach(s => {
@@ -358,7 +374,16 @@
                 let isLastTest = false;
                 let statusHtml = '';
 
-                if (student.scans.some(s => s.test_name === 'CHECK-OUT')) {
+                const isCheckedOutDone = student.scans.some(s => s.test_name === 'CHECK-OUT-DONE');
+                const isCheckedOutRet = student.scans.some(s => s.test_name === 'CHECK-OUT-RETURNING');
+                const isCheckedOutLegacy = student.scans.some(s => s.test_name === 'CHECK-OUT');
+                const isCheckedOut = isCheckedOutDone || isCheckedOutRet || isCheckedOutLegacy;
+
+                if (isCheckedOutDone) {
+                    statusHtml = `<span class="status-badge bg-gray">Done</span>`;
+                } else if (isCheckedOutRet) {
+                    statusHtml = `<span class="status-badge bg-gray">Returning</span>`;
+                } else if (isCheckedOutLegacy) {
                     statusHtml = `<span class="status-badge bg-gray">Checked Out</span>`;
                 } else if (!isCheckedIn) {
                     statusHtml = `<span class="status-badge bg-gray">Awaiting Check-in</span>`;
@@ -376,12 +401,14 @@
 
                 if (isLastTest) tr.className = 'row-warning';
 
+                const isAllComplete = uniqueCompletedRequired >= required.length && required.length > 0;
+
                 tr.innerHTML = `
-                    <td style="font-family: monospace; color: var(--primary)">
+                    <td style="font-family: monospace; color: ${isCheckedOut ? 'var(--text-muted)' : 'var(--primary)'}">
                         ${student.id}<br>
                         <span style="font-size: 0.7rem; color: var(--text-muted);">U: ${student.username}<br>P: ${student.password}</span>
                     </td>
-                    <td>
+                    <td style="color: ${isCheckedOut ? 'var(--text-muted)' : 'inherit'}">
                         <strong>${student.name}</strong> <span style="font-size: 0.8rem; opacity: 0.8;">${student.grade ? `Grade ${student.grade}` : ''}</span><br>
                         <span style="font-size: 0.75rem; color: var(--text-muted)">
                             ${student.is_two_day ? '2-Day Tester | ' : ''}
@@ -390,7 +417,7 @@
                         </span>
                     </td>
                     <td>${statusHtml}</td>
-                    <td>
+                    <td style="color: ${isCheckedOut ? 'var(--text-muted)' : 'inherit'}">
                         <div style="font-size: 0.8rem;">
                             <strong>Req:</strong> ${required.join(', ')}<br>
                             <strong>Done:</strong> <span class="audit-link" onclick="showAuditModal('${student.id}')">${completedStr || 'None'}</span>
@@ -398,7 +425,8 @@
                     </td>
                     <td>
                         <button onclick="copyToClipboard('${student.parent_phone}')" class="copy-btn">Copy Phone</button>
-                        ${isLastTest && !student.is_self_driver ? `<button onclick="copyToClipboard('Hello, ${student.name} is on their last test and should be checked out within 45 minutes.')" class="copy-btn" style="background: var(--warning); color: black;">Copy Text</button>` : ''}
+                        ${isLastTest && !student.is_self_driver && !isCheckedOut ? `<button onclick="copyToClipboard('Hello, ${student.name.split(' ')[0]} is on their last test and should be ready within 45 minutes.')" class="copy-btn" style="background: var(--warning); color: black;">Last Test</button>` : ''}
+                        ${isAllComplete && !student.is_self_driver && !isCheckedOut ? `<button onclick="copyToClipboard('Hello, ${student.name.split(' ')[0]} has finished all their testing and is ready for pickup!')" class="copy-btn" style="background: var(--success); color: white;">Done!</button>` : ''}
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -483,20 +511,43 @@
         // Simple CSV export
         function exportData() {
             let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "ID,Name,Username,Password,Grade,Phone,ELA-1,ELA-2,MATH-1,MATH-2,SCI-1,SCI-2,Tests Completed,Status,Two-Day,Self-Driver\n";
+            const headers = [
+                "ID", "Name", "Username", "Password", "Grade", "Phone",
+                "Check-In Time", "Check-Out Time",
+                "ELA-1", "ELA-1 Completion",
+                "ELA-2", "ELA-2 Completion",
+                "MATH-1", "MATH-1 Completion",
+                "MATH-2", "MATH-2 Completion",
+                "SCI-1", "SCI-1 Completion",
+                "SCI-2", "SCI-2 Completion",
+                "Status", "Two-Day", "Self-Driver"
+            ];
+            csvContent += headers.join(",") + "\n";
             
             studentsData.forEach(s => {
-                const required = getRequiredTestsList(s);
-                const testScans = s.scans.filter(sc => sc.test_name !== 'CHECK-IN' && sc.test_name !== 'CHECK-OUT');
-                const completed = testScans.map(sc => sc.test_name).join(';');
-                const checkedOut = s.scans.some(sc => sc.test_name === 'CHECK-OUT') ? 'Checked Out' : 'Active';
+                const checkedOutStatus = s.scans.some(sc => sc.test_name === 'CHECK-OUT-DONE') ? 'Done' :
+                                         s.scans.some(sc => sc.test_name === 'CHECK-OUT-RETURNING') ? 'Returning' :
+                                         s.scans.some(sc => sc.test_name === 'CHECK-OUT') ? 'Checked Out' : 'Active';
                 
+                const getTestTime = (testName) => {
+                    const scan = s.scans.find(sc => sc.test_name === testName);
+                    if (!scan) return "";
+                    const date = new Date(scan.timestamp);
+                    return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                };
+
+                const checkoutTime = getTestTime('CHECK-OUT-DONE') || getTestTime('CHECK-OUT-RETURNING') || getTestTime('CHECK-OUT');
+
                 const row = [
                     s.id, s.name, s.username, s.password, s.grade, s.parent_phone, 
-                    s.ela_1?'Yes':'No', s.ela_2?'Yes':'No', 
-                    s.math_1?'Yes':'No', s.math_2?'Yes':'No', 
-                    s.sci_1?'Yes':'No', s.sci_2?'Yes':'No',
-                    completed, checkedOut,
+                    getTestTime('CHECK-IN'), checkoutTime,
+                    s.ela_1?'Yes':'No', getTestTime('ELA-1'),
+                    s.ela_2?'Yes':'No', getTestTime('ELA-2'),
+                    s.math_1?'Yes':'No', getTestTime('MATH-1'),
+                    s.math_2?'Yes':'No', getTestTime('MATH-2'),
+                    s.sci_1?'Yes':'No', getTestTime('SCI-1'),
+                    s.sci_2?'Yes':'No', getTestTime('SCI-2'),
+                    checkedOutStatus,
                     s.is_two_day ? 'Yes' : 'No', s.is_self_driver ? 'Yes' : 'No'
                 ].map(x => `"${x || ''}"`).join(',');
                 
